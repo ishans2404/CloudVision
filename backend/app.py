@@ -31,26 +31,22 @@ async def upload_docker_compose(file: UploadFile = File(...)):
     # Read and parse the Docker Compose file
     contents = await file.read()
     docker_compose_data = yaml.safe_load(contents)
-    
     # Process the data to extract relevant information
     graph_data = process_docker_compose(docker_compose_data)
-    
     # Return the structured data as a JSON response
-    print(graph_data)
     return JSONResponse(content=graph_data)
 
 @app.post("/get-recommendations/")
 async def get_recommendations(file: UploadFile = File(...)):
-    # Read and parse the Docker Compose file
-    contents = await file.read()
-    docker_compose_data = yaml.safe_load(contents)
-    graph_data = process_docker_compose(docker_compose_data)   
-    llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
-    return JSONResponse(content=llm_inference)
-    # print("test")
-    # time.sleep(30)
-    # print(JSONResponse(content="hello world"))
-    # return JSONResponse(content="hello world")
+    # contents = await file.read()
+    # docker_compose_data = yaml.safe_load(contents)
+    # graph_data = process_docker_compose(docker_compose_data)   
+    # llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
+    # return JSONResponse(content=llm_inference)
+    print("test")
+    time.sleep(5)
+    print(JSONResponse(content="hello world"))
+    return JSONResponse(content="hello world")
 
 def process_docker_compose(compose_data):
     services = compose_data.get("services", {})
@@ -115,20 +111,26 @@ def process_docker_compose(compose_data):
 
 def generate(docker_compose_data, graph_data):
     system_prompt = """
-        You are a helpful assistant specializing in cloud application analysis.
-        You have been provided with two key pieces of information:
-        1. A Docker Compose file representing the cloud application's infrastructure and services.
-        2. A dependency graph illustrating the relationships and dependencies between the application's components.
-        Cloud applications are often affected by bottlenecks or single points of failure due to complex and intricate dependencies. Your task is to:
-        - Analyze the provided Docker Compose file to understand the architecture and components involved in the application.
-        - Examine the dependency graph to identify any critical points where bottlenecks or failure risks might occur.
-        - Detect and flag potential dependency bottlenecks or single points of failure in the application architecture.
-        - Provide actionable insights and recommendations to improve the system's robustness, scalability, and fault tolerance. 
+        You are an assistant tasked with analyzing cloud application setups. 
+
+        You are provided with the following:
+        1. A Docker Compose file that defines the services, their configurations, and how they interact.
+        2. A dependency graph that represents the relationships between the services and components in the cloud application.
+
+        Your task is to:
+        - Analyze the provided Docker Compose file and dependency graph.
+        - Identify potential issues related to reliability, redundancy, scaling, and overall system performance.
+        - Focus on detecting **single points of failure (SPOFs)**, **bottlenecks**, and **vulnerabilities** that could impact the application.
+        - Provide **actionable insights** for improving system robustness, scalability, backup strategies, and monitoring.
+        - Present your analysis in **bullet points** for clarity.
+
         The expected outcomes are:
-        - More reliable cloud applications, with improved fault tolerance.
-        - Minimized downtimes through early identification and resolution of vulnerabilities.
-        - Improved system performance by optimizing dependencies and eliminating inefficiencies.
-        Please ensure your recommendations are practical and based on best practices for cloud system optimization.
+        - Increased reliability of the cloud application.
+        - Minimization of downtimes.
+        - Improved performance and scalability.
+        - Better fault tolerance and security.
+
+        Do not include unnecessary narrative or context about the optimization process.
         """
     message = [
         {

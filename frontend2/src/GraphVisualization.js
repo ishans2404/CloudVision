@@ -78,8 +78,8 @@ const GraphVisualization = ({ graphData }) => {
           if (!nodes.get(volumeId)) {
             nodes.add({
               id: volumeId,
-              label: `Volume: ${vol}`,
-              shape: "cylinder",
+              label: `Volume`,
+              shape: "database",
               color: "#bee9e8",
             });
           }
@@ -180,8 +180,8 @@ const GraphVisualization = ({ graphData }) => {
       <div ref={graphRef} style={{ height: "600px", width: "100%" }} />
       {selectedInfo && (
         <div style={{ marginTop: "10px", padding: "10px", border: "1px solid black" }}>
-          <h3>Selected {selectedInfo.type === "node" ? "Node" : "Edge"} Details</h3>
-          <pre>{JSON.stringify(selectedInfo.data, null, 2)}</pre>
+          <h4>Selected {selectedInfo.type === "node" ? selectedInfo.data.label + ": " + selectedInfo.data.id : "Edge: " + selectedInfo.data.from + " → " + selectedInfo.data.to} </h4>
+          {/* <pre>{JSON.stringify(selectedInfo.data, null, 2)}</pre> */}
         </div>
       )}
     </div>

@@ -25,6 +25,7 @@ import React, { useState } from 'react';
 import FileUpload from './FileUpload';
 import GraphVisualization from './GraphVisualization';
 import RecommendationDisplay from './RecommendationDisplay';
+import ParticlesComponent from './particles';
 
 const App = () => {
   const [graphData, setGraphData] = useState(null);
@@ -41,7 +42,8 @@ const App = () => {
   };
 
   return (
-    <div>
+    <div style={{ height: '100vh', width: '100%' }}>
+      <ParticlesComponent id="particles" />
       <h1>Docker Compose Graph Visualization</h1>
       <FileUpload 
         onGraphDataReceived={handleGraphDataReceived} 

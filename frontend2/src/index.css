@@ -30,3 +30,35 @@ code {
   display: flex;
   flex-direction: column;
 }
+
+.MainContent {
+  flex-grow: 1;
+  padding: 2rem;
+}
+
+.ChatSection {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ConversationContainer {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.InputSection {
+  display: flex;
+  gap: 1rem;
+}
+
+
+@media (max-width: 768px) {
+  .MainContent {
+    padding-top: 300px;
+  }
+  .ChatSection {
+    font-size: 5px;
+  }
+}
