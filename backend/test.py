@@ -2,10 +2,9 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
-
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv('MY_ENV_VAR')
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 url = "https://openrouter.ai/api/v1/chat/completions"
 headers = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",

@@ -1,0 +1,141 @@
+import React, { useEffect, useRef } from 'react';
+import { DataSet, Network } from 'vis-network/standalone';
+
+const GraphVisualization = ({ graphData }) => {
+  const graphRef = useRef(null);
+  const networkInstance = useRef(null);
+
+  useEffect(() => {
+    if (graphData && graphRef.current) {
+      const nodes = new DataSet();
+      const edges = new DataSet();
+
+      // Add service nodes
+      graphData.nodes.forEach((node) => {
+        nodes.add({
+          id: node.id,
+          label: node.label,
+          shape: "box",
+          color: "#4CAF50",
+          title: `<b>${node.label}</b><br>
+                  Type: ${node.type}<br>
+                  Image: ${node.image}<br>
+                  Restart Policy: ${node.restart_policy}`
+        });
+
+        // Create intermediate nodes for Volumes, Ports, and Networks
+        node.volumes.forEach((vol) => {
+          const volumeId = `volume-${vol}`;
+          if (!nodes.get(volumeId)) {
+            nodes.add({
+              id: volumeId,
+              label: vol,
+              shape: "cylinder",
+              color: "#FFD700",
+              title: `Mounted Volume: ${vol}`
+            });
+          }
+          edges.add({
+            from: node.id,
+            to: volumeId,
+            color: "green",
+            label: "Mounts"
+          });
+        });
+
+        node.ports.forEach((port) => {
+          const portId = `port-${port}`;
+          if (!nodes.get(portId)) {
+            nodes.add({
+              id: portId,
+              label: port,
+              shape: "diamond",
+              color: "#FF4500",
+              title: `Exposed Port: ${port}`
+            });
+          }
+          edges.add({
+            from: node.id,
+            to: portId,
+            color: "purple",
+            label: "Exposes"
+          });
+        });
+
+        node.networks.forEach((network) => {
+          const networkId = `network-${network}`;
+          if (!nodes.get(networkId)) {
+            nodes.add({
+              id: networkId,
+              label: network,
+              shape: "ellipse",
+              color: "#1E90FF",
+              title: `Network: ${network}`
+            });
+          }
+          edges.add({
+            from: node.id,
+            to: networkId,
+            color: "blue",
+            label: "Connected to"
+          });
+        });
+      });
+
+      // Add edges based on dependencies
+      graphData.edges.forEach((edge) => {
+        edges.add({
+          from: edge.source,
+          to: edge.target,
+          color: edge.type === "dependency" ? "red" :
+                 edge.type === "network" ? "blue" :
+                 edge.type === "volume" ? "green" :
+                 edge.type === "port" ? "purple" : "gray",
+          arrows: "to",
+          label: edge.info || edge.dependency_type || edge.type,
+          title: `Connection: ${edge.info || edge.dependency_type || edge.type}`
+        });
+      });
+
+      const data = { nodes, edges };
+      const options = {
+        layout: {
+          hierarchical: {
+            enabled: true,
+            levelSeparation: 200,
+            nodeSpacing: 250,
+            treeSpacing: 400,
+            direction: "UD",
+            sortMethod: "directed"
+          }
+        },
+        nodes: {
+          shape: "dot",
+          size: 25,
+          font: { size: 12 },
+        },
+        edges: {
+          arrows: "to",
+          font: { align: "middle" },
+          smooth: { type: "dynamic" }
+        },
+        interaction: {
+          hover: true,
+          tooltipDelay: 200,
+          navigationButtons: true,
+          zoomView: true
+        }
+      };
+
+      if (networkInstance.current) {
+        networkInstance.current.destroy();
+      }
+
+      networkInstance.current = new Network(graphRef.current, data, options);
+    }
+  }, [graphData]);
+
+  return <div ref={graphRef} style={{ height: '700px', width: '90%' }} />;
+};
+
+export default GraphVisualization;
