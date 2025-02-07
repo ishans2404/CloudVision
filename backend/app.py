@@ -6,6 +6,7 @@ import json
 import io
 import requests
 import os
+import time
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -46,6 +47,10 @@ async def get_recommendations(file: UploadFile = File(...)):
     graph_data = process_docker_compose(docker_compose_data)   
     llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
     return JSONResponse(content=llm_inference)
+    # print("test")
+    # time.sleep(30)
+    # print(JSONResponse(content="hello world"))
+    # return JSONResponse(content="hello world")
 
 def process_docker_compose(compose_data):
     services = compose_data.get("services", {})
