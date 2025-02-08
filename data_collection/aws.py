@@ -1,97 +1,83 @@
 import boto3
-import csv
-from datetime import datetime, timedelta
-import re
+import logging
+from botocore.exceptions import ClientError
 
-def sanitize_metric_id(metric_name):
-    metric_id = re.sub(r'[^a-zA-Z0-9_]', '_', metric_name).lower()
-    if not metric_id[0].isalpha():
-        metric_id = 'm_' + metric_id  # Ensure it starts with a letter
-    return metric_id
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def get_cloudwatch_metrics(namespace, dimension_name, dimension_value, period, start_time, end_time):
-    cloudwatch = boto3.client('cloudwatch')
-    
-    metrics = cloudwatch.list_metrics(Namespace=namespace, Dimensions=[{'Name': dimension_name}])
-    
-    metric_data = []
-    for metric in metrics.get('Metrics', []):
-        metric_name = metric['MetricName']
-        metric_id = sanitize_metric_id(metric_name)
-        response = cloudwatch.get_metric_data(
-            MetricDataQueries=[
-                {
-                    'Id': metric_id,
-                    'MetricStat': {
-                        'Metric': {
-                            'Namespace': namespace,
-                            'MetricName': metric_name,
-                            'Dimensions': [
-                                {
-                                    'Name': dimension_name,
-                                    'Value': dimension_value
-                                }
-                            ]
-                        },
-                        'Period': period,
-                        'Stat': 'Average'
-                    },
-                    'ReturnData': True
-                }
-            ],
-            StartTime=start_time,
-            EndTime=end_time
+class CloudWatchWrapper:
+    """Encapsulates Amazon CloudWatch functions."""
+
+    def __init__(self, aws_access_key, aws_secret_key, region_name='us-east-1'):
+        """
+        :param aws_access_key: AWS access key ID.
+        :param aws_secret_key: AWS secret access key.
+        :param region_name: AWS region.
+        """
+        self.cloudwatch_client = boto3.client(
+            'cloudwatch',
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+            region_name=region_name
         )
-        
-        if response['MetricDataResults']:
-            metric_data.append((metric_name, response['MetricDataResults'][0]))
-    
-    return metric_data
 
-def get_xray_traces(start_time, end_time):
-    xray = boto3.client('xray')
-    response = xray.get_trace_summaries(StartTime=start_time, EndTime=end_time)
-    
-    trace_data = []
-    for trace in response.get('TraceSummaries', []):
-        trace_data.append([trace.get('Id'), trace.get('Duration'), trace.get('ResponseTime'), trace.get('Annotations')])
-    
-    return trace_data
+    def get_metric_statistics(self, namespace, name, start, end, period, stat_types):
+        """
+        Gets statistics for a metric within a specified time span.
 
-def save_to_csv(metric_data, trace_data):
-    filename = f"cloudwatch_xray_metrics_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
-    with open(filename, mode='w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Metric Name", "Timestamp", "Value"])
-        
-        for metric_name, data in metric_data:
-            for timestamp, value in zip(data['Timestamps'], data['Values']):
-                writer.writerow([metric_name, timestamp, value])
-        
-        writer.writerow([])
-        writer.writerow(["X-Ray Trace ID", "Duration", "Response Time", "Annotations"])
-        
-        for trace in trace_data:
-            writer.writerow(trace)
-    
-    print(f"Metrics and X-Ray traces saved to {filename}")
+        :param namespace: The namespace of the metric.
+        :param name: The name of the metric.
+        :param start: The UTC start time of the time span to retrieve.
+        :param end: The UTC end time of the time span to retrieve.
+        :param period: The period, in seconds, in which to group metrics.
+        :param stat_types: The type of statistics to retrieve.
+        :return: The retrieved statistics for the metric.
+        """
+        try:
+            response = self.cloudwatch_client.get_metric_statistics(
+                Namespace=namespace,
+                MetricName=name,
+                StartTime=start,
+                EndTime=end,
+                Period=period,
+                Statistics=stat_types
+            )
+            logger.info("Got %s statistics for %s.", len(response["Datapoints"]), response["Label"])
+            return response
+        except ClientError as e:
+            logger.exception("Couldn't get statistics for %s.%s. Error: %s", namespace, name, str(e))
+            return None
 
-def main():
-    namespace = "AWS/EC2"
-    dimension_name = "InstanceId"
-    dimension_value = input("Enter EC2 Instance ID (e.g., i-1234567890abcdef0): ")
-    period = 60  # 1-minute interval
-    
-    end_time = datetime.utcnow()
-    start_time = end_time - timedelta(hours=1)  # Last 1 hour
-    
-    print("Fetching CloudWatch Metrics...")
-    metric_data = get_cloudwatch_metrics(namespace, dimension_name, dimension_value, period, start_time, end_time)
-    
-    print("Fetching AWS X-Ray Traces...")
-    trace_data = get_xray_traces(start_time, end_time)
-    
-    save_to_csv(metric_data, trace_data)
-    
 if __name__ == "__main__":
-    main()
+    from datetime import datetime, timedelta
+
+    # AWS credentials
+    AWS_ACCESS_KEY = "AKIA5MSUBQFJKUN4TV5X"
+    AWS_SECRET_KEY = "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"
+    REGION = "us-east-1"
+
+    # Define metric parameters
+    METRICS = [
+        {"namespace": "AWS/EC2", "name": "CPUUtilization"},
+        {"namespace": "AWS/EC2", "name": "NetworkIn"},
+        {"namespace": "AWS/EC2", "name": "NetworkOut"},
+        {"namespace": "CWAgent", "name": "mem_used_percent"},  # CloudWatch Agent memory metric
+        {"namespace": "CWAgent", "name": "cpu_usage_active"}   # CloudWatch Agent CPU metric
+    ]
+    
+    START_TIME = datetime.utcnow() - timedelta(hours=1)
+    END_TIME = datetime.utcnow()
+    PERIOD = 60
+    STATISTICS = ["Average", "Maximum", "Minimum"]
+    
+    cloudwatch = CloudWatchWrapper(AWS_ACCESS_KEY, AWS_SECRET_KEY, REGION)
+    
+    for metric in METRICS:
+        metrics_data = cloudwatch.get_metric_statistics(
+            metric["namespace"], metric["name"], START_TIME, END_TIME, PERIOD, STATISTICS
+        )
+        if metrics_data:
+            print(f"Metric: {metric['name']}")
+            print(metrics_data)
+            print("-" * 50)
