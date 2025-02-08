@@ -13,3 +13,5 @@ pyyaml
 requests
 python-dotenv
 python-multipart
+slowapi
+limits

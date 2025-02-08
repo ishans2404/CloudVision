@@ -1,13 +1,15 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 import yaml
 import json
 import io
 import requests
 import os
 import time
+from fastapi import FastAPI, File, UploadFile, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
 load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
@@ -27,8 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# slowapi rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(429, _rate_limit_exceeded_handler)
+
 @app.post("/upload-docker-compose/")
-async def upload_docker_compose(file: UploadFile = File(...)):
+@limiter.limit("15/minute")
+async def upload_docker_compose(request: Request, file: UploadFile = File(...)):
     # read/parse docker compose file
     contents = await file.read()
     docker_compose_data = yaml.safe_load(contents)
@@ -38,16 +46,17 @@ async def upload_docker_compose(file: UploadFile = File(...)):
     return JSONResponse(content=graph_data)
 
 @app.post("/get-recommendations/")
-async def get_recommendations(file: UploadFile = File(...)):
-    contents = await file.read()
-    docker_compose_data = yaml.safe_load(contents)
-    graph_data = process_docker_compose(docker_compose_data)   
-    llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
-    return JSONResponse(content=llm_inference)
-    # print("test")
-    # time.sleep(5)
-    # print(JSONResponse(content="hello world"))
-    # return JSONResponse(content="hello world")
+@limiter.limit("5/minute")
+async def get_recommendations(request: Request, file: UploadFile = File(...)):
+    # contents = await file.read()
+    # docker_compose_data = yaml.safe_load(contents)
+    # graph_data = process_docker_compose(docker_compose_data)   
+    # llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
+    # return JSONResponse(content=llm_inference)
+    print("test")
+    time.sleep(5)
+    print(JSONResponse(content="hello world"))
+    return JSONResponse(content="hello world")
 
 @app.get("/vulnerabilities/")
 async def vulnerabilities():
