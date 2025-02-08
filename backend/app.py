@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+DOCKER_FASTAPI_URL=os.getenv('DOCKER_FASTAPI_URL')
 url = "https://openrouter.ai/api/v1/chat/completions"
 headers = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -28,12 +29,12 @@ app.add_middleware(
 
 @app.post("/upload-docker-compose/")
 async def upload_docker_compose(file: UploadFile = File(...)):
-    # Read and parse the Docker Compose file
+    # read/parse docker compose file
     contents = await file.read()
     docker_compose_data = yaml.safe_load(contents)
-    # Process the data to extract relevant information
+    # extract relevant graph information
     graph_data = process_docker_compose(docker_compose_data)
-    # Return the structured data as a JSON response
+    # return JSON response
     return JSONResponse(content=graph_data)
 
 @app.post("/get-recommendations/")
@@ -47,6 +48,26 @@ async def get_recommendations(file: UploadFile = File(...)):
     # time.sleep(5)
     # print(JSONResponse(content="hello world"))
     # return JSONResponse(content="hello world")
+
+@app.get("/vulnerabilities/")
+async def vulnerabilities():
+    try:
+        response = requests.get(f"{DOCKER_FASTAPI_URL}/vultest")
+        # to ensure successful request
+        response.raise_for_status()
+        return JSONResponse(content=response.json())
+    except requests.exceptions.RequestException as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.get("/metrics/")
+async def metrics():
+    try:
+        response = requests.get(f"{DOCKER_FASTAPI_URL}/metrics")
+        # to ensure successful request
+        response.raise_for_status()
+        return JSONResponse(content=response.json())
+    except requests.exceptions.RequestException as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 def process_docker_compose(compose_data):
     services = compose_data.get("services", {})
@@ -70,16 +91,16 @@ def process_docker_compose(compose_data):
 
         graph_data["nodes"].append(service_node)
 
-        # Add service dependencies
+        # add service dependencies
         for dependency in service_node["dependencies"]:
             graph_data["edges"].append({
                 "source": service_name,
                 "target": dependency,
                 "type": "dependency",
-                "dependency_type": "Generic"  # Customize based on actual logic
+                "dependency_type": "Generic" # to customize
             })
 
-        # Add network edges
+        # add network edges
         for network in service_node["networks"]:
             graph_data["edges"].append({
                 "source": service_name,
@@ -88,7 +109,7 @@ def process_docker_compose(compose_data):
                 "info": f"Connected to {network} network"
             })
 
-        # Add volume edges
+        # add volume edges
         for volume in service_node["volumes"]:
             graph_data["edges"].append({
                 "source": service_name,
@@ -97,7 +118,7 @@ def process_docker_compose(compose_data):
                 "info": f"Mounted volume {volume}"
             })
 
-        # Add port edges (simple connection between service and port)
+        # add port edges (connection between service and port)
         for port in service_node["ports"]:
             graph_data["edges"].append({
                 "source": service_name,
@@ -106,10 +127,10 @@ def process_docker_compose(compose_data):
                 "info": f"Exposes port {port}"
             })
 
-    # Return the formatted graph data
     return graph_data
 
 def generate(docker_compose_data, graph_data):
+    # system prompt = defines behavior of llm for inference
     system_prompt = """
         You are an assistant tasked with analyzing cloud application setups. 
 
@@ -132,12 +153,16 @@ def generate(docker_compose_data, graph_data):
 
         Do not include unnecessary narrative or context about the optimization process.
         """
+    
+    # message object to send to model.
     message = [
         {
             "role": "user",
             "content": f"{system_prompt}\nDocker Compose Data:{docker_compose_data}\nGraph Data: {graph_data}"
         }
     ]
+
+    # post message to the model/get the response.
     response = requests.post(
         url=url,
         headers=headers,
@@ -146,6 +171,7 @@ def generate(docker_compose_data, graph_data):
             "messages": message,  
         })
     )
+
     if response.status_code == 200:
         data = response.json()
         model_reply = data.get("choices", [])[0].get("message", {}).get("content")
