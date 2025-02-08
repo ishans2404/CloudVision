@@ -1,5 +1,6 @@
 import boto3
 import logging
+import os
 from botocore.exceptions import ClientError
 
 # Configure logging
@@ -9,16 +10,12 @@ logger = logging.getLogger(__name__)
 class CloudWatchWrapper:
     """Encapsulates Amazon CloudWatch functions."""
 
-    def __init__(self, aws_access_key, aws_secret_key, region_name='us-east-1'):
+    def __init__(self, region_name='us-east-1'):
         """
-        :param aws_access_key: AWS access key ID.
-        :param aws_secret_key: AWS secret access key.
         :param region_name: AWS region.
         """
         self.cloudwatch_client = boto3.client(
             'cloudwatch',
-            aws_access_key_id=aws_access_key,
-            aws_secret_access_key=aws_secret_key,
             region_name=region_name
         )
 
@@ -52,9 +49,7 @@ class CloudWatchWrapper:
 if __name__ == "__main__":
     from datetime import datetime, timedelta
 
-    # AWS credentials
-    AWS_ACCESS_KEY = "test key"
-    AWS_SECRET_KEY = "secret key"
+    # AWS region
     REGION = "us-east-1"
 
     # Define metric parameters
@@ -71,7 +66,7 @@ if __name__ == "__main__":
     PERIOD = 60
     STATISTICS = ["Average", "Maximum", "Minimum"]
     
-    cloudwatch = CloudWatchWrapper(AWS_ACCESS_KEY, AWS_SECRET_KEY, REGION)
+    cloudwatch = CloudWatchWrapper(REGION)
     
     for metric in METRICS:
         metrics_data = cloudwatch.get_metric_statistics(
