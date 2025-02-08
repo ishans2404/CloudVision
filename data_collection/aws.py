@@ -53,8 +53,8 @@ if __name__ == "__main__":
     from datetime import datetime, timedelta
 
     # AWS credentials
-    AWS_ACCESS_KEY = "AKIA5MSUBQFJKUN4TV5X"
-    AWS_SECRET_KEY = "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"
+    AWS_ACCESS_KEY = "test key"
+    AWS_SECRET_KEY = "secret key"
     REGION = "us-east-1"
 
     # Define metric parameters
