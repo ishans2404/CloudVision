@@ -38,15 +38,15 @@ async def upload_docker_compose(file: UploadFile = File(...)):
 
 @app.post("/get-recommendations/")
 async def get_recommendations(file: UploadFile = File(...)):
-    # contents = await file.read()
-    # docker_compose_data = yaml.safe_load(contents)
-    # graph_data = process_docker_compose(docker_compose_data)   
-    # llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
-    # return JSONResponse(content=llm_inference)
-    print("test")
-    time.sleep(5)
-    print(JSONResponse(content="hello world"))
-    return JSONResponse(content="hello world")
+    contents = await file.read()
+    docker_compose_data = yaml.safe_load(contents)
+    graph_data = process_docker_compose(docker_compose_data)   
+    llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
+    return JSONResponse(content=llm_inference)
+    # print("test")
+    # time.sleep(5)
+    # print(JSONResponse(content="hello world"))
+    # return JSONResponse(content="hello world")
 
 def process_docker_compose(compose_data):
     services = compose_data.get("services", {})
