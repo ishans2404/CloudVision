@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-// import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import { 
   AppBar, 
@@ -115,20 +114,7 @@ function LandingPage() {
           <Button color="inherit" component={Link} to="/home" sx={{ ml: 2, marginRight: "0.5rem" }}>
             Home
           </Button>
-          {/* <SignedIn> */}
-            {/* <Button color="inherit" component={Link} to="/chat" sx={{ ml: 2, marginRight: "1rem" }}>
-              Chat
-            </Button>         
-            <UserButton /> */}
-          {/* </SignedIn> */}
-          {/* <SignedOut>
-            <SignInButton mode="modal">
-              <Button color="inherit">SignIn</Button>
-            </SignInButton>
-            <SignUpButton mode="modal">
-              <Button color="inherit" sx={{ ml: 1 }}>SignUp</Button>
-            </SignUpButton>
-          </SignedOut> */}
+        
         </Toolbar>
       </StyledAppBar>
 
@@ -150,18 +136,9 @@ function LandingPage() {
         </Fade>
         <Fade in={true} timeout={2500}>
           <Box>
-            {/* <SignedOut>
-              <SignInButton mode="modal">
-                <Button color="inherit" variant="contained" size="large" sx={{ mt: 4, bgcolor: 'white', color: 'black', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.8)' } }}>
-                  Get Started 
-                </Button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn> */}
               <Button color="inherit" component={Link} to="/home" variant="contained" size="large" sx={{ mt: 4, bgcolor: 'white', color: 'black', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.8)' } }}>
                 Start 
               </Button>
-            {/* </SignedIn> */}
           </Box>
         </Fade>
         <ScrollDownButton onClick={scrollToFeatures}>

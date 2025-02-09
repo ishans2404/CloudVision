@@ -1,55 +1,3 @@
-// import React, { useEffect, useRef } from 'react';
-// import { DataSet, Network } from 'vis-network/standalone';
-
-// const GraphVisualization = ({ graphData }) => {
-//   const graphRef = useRef(null);
-//   const networkInstance = useRef(null); // Store the network instance
-
-//   useEffect(() => {
-//     if (graphData && graphRef.current) {
-//       const nodes = new DataSet(graphData.nodes.map((node) => ({
-//         id: node.id,
-//         label: node.label,
-//         shape: 'box',
-//       })));
-
-//       const edges = new DataSet(graphData.edges.map((edge) => ({
-//         from: edge.source,
-//         to: edge.target,
-//       })));
-
-//       const data = { nodes, edges };
-//       const options = {
-//         nodes: {
-//           shape: 'dot',
-//           size: 10,
-//         },
-//         edges: {
-//           arrows: 'to',
-//         },
-//         interaction: {
-//           hover: true,
-//         },
-//         physics: {
-//           enabled: true,
-//         },
-//       };
-
-//       // Destroy previous network instance before creating a new one
-//       if (networkInstance.current) {
-//         networkInstance.current.destroy();
-//       }
-
-//       networkInstance.current = new Network(graphRef.current, data, options);
-//     }
-//   }, [graphData]); // Depend on graphData changes
-
-//   return <div ref={graphRef} style={{ height: '600px', width: '100%' }} />;
-// };
-
-// export default GraphVisualization;
-
-
 import React, { useEffect, useRef, useState } from "react";
 import { DataSet, Network } from "vis-network/standalone";
 
@@ -175,9 +123,24 @@ const GraphVisualization = ({ graphData }) => {
     }
   }, [graphData]);
 
+  useEffect(() => {
+  const handleResize = () => {
+    if (networkInstance.current) {
+      networkInstance.current.redraw();
+    }
+  };
+
+  window.addEventListener('resize', handleResize);
+
+  return () => {
+    window.removeEventListener('resize', handleResize);
+  };
+}, []);
+
+
   return (
     <div>
-      <div ref={graphRef} style={{ height: "600px", width: "100%" }} />
+      <div ref={graphRef} style={{ height: "55vh", width: "100%" }} />
       {selectedInfo && (
         <div style={{ marginTop: "10px", padding: "10px", border: "1px solid black" }}>
           <h4>Selected {selectedInfo.type === "node" ? selectedInfo.data.label + ": " + selectedInfo.data.id : "Edge: " + selectedInfo.data.from + " → " + selectedInfo.data.to} </h4>

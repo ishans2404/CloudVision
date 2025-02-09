@@ -10,6 +10,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
+import boto3
+import logging
+from botocore.exceptions import ClientError
+from datetime import datetime, timedelta
 load_dotenv()
 
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
@@ -19,6 +23,11 @@ headers = {
     "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     "Content-Type": "application/json", 
 }
+
+# configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 app = FastAPI()
 app.add_middleware(
@@ -48,15 +57,15 @@ async def upload_docker_compose(request: Request, file: UploadFile = File(...)):
 @app.post("/get-recommendations/")
 @limiter.limit("5/minute")
 async def get_recommendations(request: Request, file: UploadFile = File(...)):
-    # contents = await file.read()
-    # docker_compose_data = yaml.safe_load(contents)
-    # graph_data = process_docker_compose(docker_compose_data)   
-    # llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
-    # return JSONResponse(content=llm_inference)
-    print("test")
-    time.sleep(5)
-    print(JSONResponse(content="hello world"))
-    return JSONResponse(content="hello world")
+    contents = await file.read()
+    docker_compose_data = yaml.safe_load(contents)
+    graph_data = process_docker_compose(docker_compose_data)   
+    llm_inference = generate(docker_compose_data=str(docker_compose_data), graph_data=graph_data)
+    return JSONResponse(content=llm_inference)
+    # print("test")
+    # time.sleep(5)
+    # print(JSONResponse(content="#hello world"))
+    # return JSONResponse(content="hello world")
 
 @app.get("/vulnerabilities/")
 async def vulnerabilities():
@@ -77,6 +86,38 @@ async def metrics():
         return JSONResponse(content=response.json())
     except requests.exceptions.RequestException as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.get("/get-ec2/")
+async def get_metrics():
+    """
+    API endpoint to fetch AWS CloudWatch metrics.
+    """
+    REGION = "us-east-1"
+    METRICS = [
+        {"namespace": "AWS/EC2", "name": "CPUUtilization"},
+        {"namespace": "AWS/EC2", "name": "NetworkIn"},
+        {"namespace": "AWS/EC2", "name": "NetworkOut"},
+        {"namespace": "CWAgent", "name": "mem_used_percent"},
+        {"namespace": "CWAgent", "name": "cpu_usage_active"}
+    ]
+
+    START_TIME = datetime.utcnow() - timedelta(hours=1)
+    END_TIME = datetime.utcnow()
+    PERIOD = 60
+    STATISTICS = ["Average", "Maximum", "Minimum"]
+
+    cloudwatch = CloudWatchWrapper(REGION)
+    results = {}
+
+    for metric in METRICS:
+        metrics_data = cloudwatch.get_metric_statistics(
+            metric["namespace"], metric["name"], START_TIME, END_TIME, PERIOD, STATISTICS
+        )
+        if metrics_data:
+            results[metric["namespace"]] = results.get(metric["namespace"], {})
+            results[metric["namespace"]][metric["name"]] = metrics_data.get(metric["name"])
+
+    return JSONResponse(content=results)
 
 def process_docker_compose(compose_data):
     services = compose_data.get("services", {})
@@ -189,3 +230,47 @@ def generate(docker_compose_data, graph_data):
     else:
         print(f"Error: {response.status_code}, {response.text}")
         return f"Error: {response.status_code}, {response.text}"
+
+class CloudWatchWrapper:
+    """Encapsulates Amazon CloudWatch functions."""
+
+    def __init__(self, region_name="us-east-1"):
+        """
+        :param region_name: AWS region.
+        """
+        self.cloudwatch_client = boto3.client(
+            "cloudwatch",
+            region_name=region_name
+        )
+
+    def get_metric_statistics(self, namespace, name, start, end, period, stat_types):
+        """
+        Gets statistics for a metric within a specified time span.
+        """
+        try:
+            response = self.cloudwatch_client.get_metric_statistics(
+                Namespace=namespace,
+                MetricName=name,
+                StartTime=start,
+                EndTime=end,
+                Period=period,
+                Statistics=stat_types
+            )
+            logger.info("Got %s statistics for %s.", len(response["Datapoints"]), response["Label"])
+
+            # Structure the datapoints
+            structured_data = []
+            for datapoint in response["Datapoints"]:
+                structured_data.append({
+                    "Timestamp": datapoint.get("Timestamp").isoformat(),  # Convert datetime to string
+                    "Average": datapoint.get("Average"),
+                    "Maximum": datapoint.get("Maximum"),
+                    "Minimum": datapoint.get("Minimum"),
+                    "Period": period
+                })
+
+            return {name: structured_data}
+
+        except ClientError as e:
+            logger.exception("Couldn't get statistics for %s.%s. Error: %s", namespace, name, str(e))
+            return None
