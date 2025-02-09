@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vulnerability Scan</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: black;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 80%;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            font-size: 16px;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: white;
+            color: black;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .scan-result {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .image-header {
+            background-color: #222;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .image-header:hover {
+            background-color: #333;
+        }
+
+        .table-container {
+            display: none; 
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            color: black;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        th {
+            background-color: #ddd;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Vulnerability Scan</h1>
+        <h3>Test Page only</h3>
+        <p>Click the button below to scan the system for vulnerabilities in running containers.</p>
+        <button onclick="scanSystem()">Scan System Now</button>
+
+        <div id="results" class="scan-result"></div>
+    </div>
+
+    <script>
+        function scanSystem() {
+            fetch('/vultest')
+                .then(response => response.json())
+                .then(data => displayResults(data.results))
+                .catch(error => console.error('Error:', error));
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = ""; 
+
+            results.forEach(item => {
+                const imageDiv = document.createElement("div");
+
+                // Count vulnerabilities
+                const vulnCount = item.vulnerabilities ? item.vulnerabilities.length : 0;
+                const vulnText = `${item.image} (${vulnCount} vulnerabilities found)`;
+
+                imageDiv.innerHTML = `
+                    <div class="image-header" onclick="toggleVisibility('${item.image.replace(/[^a-zA-Z0-9]/g, '')}')">
+                        ${vulnText}
+                    </div>
+                    <div class="table-container" id="${item.image.replace(/[^a-zA-Z0-9]/g, '')}">
+                        <p><strong>Comments:</strong> ${item.comments}</p>
+                        <table>
+                            <tr>
+                                <th>Vulnerability</th>
+                                <th>Description</th>
+                                <th>Solution</th>
+                            </tr>
+                            ${item.vulnerabilities.map(vuln => `
+                                <tr>
+                                    <td><a href="${vuln['nvd link']}" target="_blank">${vuln.cve}</a></td>
+                                    <td>${vuln.package} - ${vuln.installed} (fixed: ${vuln.fixed})</td>
+                                    <td>${vuln.solution}</td>
+                                </tr>
+                            `).join("")}
+                        </table>
+                    </div>
+                `;
+
+                resultsDiv.appendChild(imageDiv);
+            });
+        }
+
+        function toggleVisibility(id) {
+            const tableContainer = document.getElementById(id);
+            if (tableContainer.style.display === "none" || tableContainer.style.display === "") {
+                tableContainer.style.display = "block";
+            } else {
+                tableContainer.style.display = "none";
+            }
+        }
+    </script>
+
+</body>
+</html>

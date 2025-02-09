@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Container Metrics Dashboard</title>
+  <style>
+    /* Black and white theme */
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1, h2, h3, h4 {
+      margin: 0 0 10px;
+    }
+    .container {
+      border: 1px solid #fff;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Container Metrics Dashboard</h1>
+  <h3>Test Page Only</h3>
+  <div id="metrics-container">
+    <!-- Metrics will be loaded here -->
+  </div>
+
+  <script>
+    // Function to fetch and display metrics
+    async function fetchMetrics() {
+      try {
+        const baseUrl = window.location.origin; // Get current browser URL origin
+        const metricsUrl = `${baseUrl}/metrics`; // Append /metrics
+        
+        const response = await fetch(metricsUrl);
+        const data = await response.json();
+        const container = document.getElementById('metrics-container');
+
+        // Clear previous metrics
+        container.innerHTML = '';
+
+        // Loop through each container's metrics data
+        data.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'container';
+
+          // Build HTML content for the container card
+          let html = `<h2>${item.container_name}</h2>`;
+          html += `<p><strong>Image Name:</strong> ${item.image_name}</p>`;
+          html += `<p><strong>State:</strong> ${item.state}</p>`;
+          html += `<p><strong>Uptime:</strong> ${item.uptime} seconds</p>`;
+          html += `<p><strong>Restart Count:</strong> ${item.restart_count}</p>`;
+
+          html += `<h3>Resource Usage</h3>`;
+          html += `<ul>
+                     <li><strong>CPU Percent:</strong> ${item.resource_usage.cpu_percent}</li>
+                     <li><strong>Memory Usage:</strong> ${item.resource_usage.memory_usage}</li>
+                     <li><strong>Memory Percent:</strong> ${item.resource_usage.memory_percent}</li>
+                     <li><strong>Network IO:</strong> ${item.resource_usage.network_io}</li>
+                     <li><strong>Block IO:</strong> ${item.resource_usage.block_io}</li>
+                     <li><strong>PIDs:</strong> ${item.resource_usage.pids}</li>
+                     <li><strong>Online CPUs:</strong> ${item.resource_usage.online_cpus !== null ? item.resource_usage.online_cpus : 'N/A'}</li>
+                   </ul>`;
+
+          html += `<h3>Network Metrics</h3>`;
+          for (let networkName in item.network_metrics) {
+            const net = item.network_metrics[networkName];
+            html += `<h4>${networkName}</h4>`;
+            html += `<ul>
+                       <li><strong>Gateway:</strong> ${net.Gateway}</li>
+                       <li><strong>IPAddress:</strong> ${net.IPAddress}</li>
+                       <li><strong>IP Prefix Len:</strong> ${net.IPPrefixLen}</li>
+                       <li><strong>Mac Address:</strong> ${net.MacAddress}</li>
+                     </ul>`;
+          }
+
+          card.innerHTML = html;
+          container.appendChild(card);
+        });
+      } catch (error) {
+        console.error('Error fetching metrics:', error);
+        document.getElementById('metrics-container').innerHTML = '<p>Error fetching metrics data.</p>';
+      }
+    }
+
+    // Fetch metrics immediately and then refresh every 5 seconds
+    fetchMetrics();
+    setInterval(fetchMetrics, 5000);
+  </script>
+</body>
+</html>
